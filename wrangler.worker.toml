@@ -1,0 +1,13 @@
+name = "management-report"
+main = "worker/cloudflare.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat_v2"]
+
+[assets]
+directory = "dist/client"
+not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "management-report-db"
+database_id = "f0ae3126-e26e-4b76-81b8-e1c40bb1f824"

@@ -2,7 +2,6 @@ import {
   entriesToSaved,
   listStoredEntries,
   replaceStoredEntry,
-  writeSharedExcel,
   type SharedEntry,
 } from "../../../lib/shared-config";
 
@@ -41,7 +40,6 @@ export async function POST(request: Request) {
     }
 
     await replaceStoredEntry(key, payload.entry, payload.rows);
-    await writeSharedExcel();
     const rows = await listStoredEntries();
     return Response.json({ saved: entriesToSaved(rows) });
   } catch (error) {

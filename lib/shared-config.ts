@@ -2,7 +2,6 @@ import { env } from "cloudflare:workers";
 
 type RuntimeEnv = {
   DB?: D1Database;
-  CONFIG_FILES?: R2Bucket;
 };
 
 type StoredEntryRow = {
@@ -17,8 +16,6 @@ export type SharedEntry = {
   path: string[];
   config: unknown;
 };
-
-export const SHARED_FILE_KEY = "shared-config/confirmed-property-config.xls";
 
 export const EXPORT_HEADERS = [
   "经营体链路",
@@ -57,12 +54,6 @@ export function getDatabase() {
   const db = runtimeEnv().DB;
   if (!db) throw new Error("共享配置数据库暂不可用");
   return db;
-}
-
-export function getBucket() {
-  const bucket = runtimeEnv().CONFIG_FILES;
-  if (!bucket) throw new Error("共享配置文件存储暂不可用");
-  return bucket;
 }
 
 export async function ensureSharedConfigTable() {
@@ -161,16 +152,4 @@ export function buildSharedExcel(rowsByEntry: StoredEntryRow[]) {
     th { height: 30px; background: #08a9e8; color: #ffffff; font-size: 16px; font-weight: 700; text-align: left; vertical-align: middle; border: 1px solid #e6e6e6; padding: 3px 6px; mso-number-format: "\\@"; }
     td { height: 28px; color: #222222; font-size: 12px; text-align: left; vertical-align: middle; border: 1px solid #e6e6e6; padding: 2px 6px; mso-number-format: "\\@"; }
   </style></head><body><table>${colgroup}${table}</table></body></html>`;
-}
-
-export async function writeSharedExcel() {
-  const rows = await listStoredEntries();
-  const excel = buildSharedExcel(rows);
-  await getBucket().put(SHARED_FILE_KEY, excel, {
-    httpMetadata: {
-      contentType: "application/vnd.ms-excel; charset=utf-8",
-      contentDisposition:
-        "attachment; filename*=UTF-8''%E5%B7%B2%E9%85%8D%E7%BD%AE%E7%BB%8F%E8%90%A5%E4%BD%93%E4%BA%A7%E6%9D%83.xls",
-    },
-  });
 }
