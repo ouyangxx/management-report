@@ -14,11 +14,19 @@
     </aside>
     <main class="main">
       <div class="bar">
-        <div class="path" id="currentPath">当前经营体：能电BG &gt; 能良移动</div>
-        <div class="top-actions">
-          <span class="saved-count" id="savedCount">已确认0个经营体的产权配置</span>
-          <button class="save-btn" id="saveBtn">确认配置</button>
-          <button class="download" id="downloadBtn">下载全部已确认的经营体产权配置</button>
+        <div class="current-status">
+          <div class="path" id="currentPath">当前经营体：能电BG &gt; 能良移动</div>
+          <div class="current-confirm">
+            <span class="time-text" id="currentLastConfirmedAt">当前经营体最后确认时间：暂无</span>
+            <button class="save-btn" id="saveBtn">确认配置</button>
+          </div>
+        </div>
+        <div class="overall-progress">
+          <div class="overall-line">
+            <span class="saved-count" id="savedCount">累计已确认0个经营体的产权配置</span>
+            <button class="icon-download" id="downloadBtn" title="下载全部已确认的经营体产权配置" aria-label="下载全部已确认的经营体产权配置">⇩</button>
+          </div>
+          <span class="time-text" id="globalLastConfirmedAt">最后一次确认时间：暂无</span>
         </div>
       </div>
       <section class="panel" id="panel">

@@ -1,5 +1,7 @@
 import app from "../dist/server/ssr/index.js";
 
+const DEPLOY_MARKER = "2026-07-25-progress-meta";
+
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
@@ -7,6 +9,7 @@ interface Env {
 
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    void DEPLOY_MARKER;
     const url = new URL(request.url);
 
     if (!url.pathname.startsWith("/api/") && (request.method === "GET" || request.method === "HEAD")) {

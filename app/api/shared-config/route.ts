@@ -1,9 +1,14 @@
 import {
+  entriesToMeta,
   entriesToSaved,
   listStoredEntries,
   replaceStoredEntry,
   type SharedEntry,
 } from "../../../lib/shared-config";
+
+const JSON_HEADERS = {
+  "Cache-Control": "no-store",
+};
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
@@ -16,10 +21,13 @@ function isRows(value: unknown): value is string[][] {
 export async function GET() {
   try {
     const rows = await listStoredEntries();
-    return Response.json({ saved: entriesToSaved(rows) });
+    return Response.json(
+      { saved: entriesToSaved(rows), meta: entriesToMeta(rows) },
+      { headers: JSON_HEADERS }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "共享配置加载失败";
-    return Response.json({ error: message }, { status: 500 });
+    return Response.json({ error: message }, { status: 500, headers: JSON_HEADERS });
   }
 }
 
@@ -41,9 +49,12 @@ export async function POST(request: Request) {
 
     await replaceStoredEntry(key, payload.entry, payload.rows);
     const rows = await listStoredEntries();
-    return Response.json({ saved: entriesToSaved(rows) });
+    return Response.json(
+      { saved: entriesToSaved(rows), meta: entriesToMeta(rows) },
+      { headers: JSON_HEADERS }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "确认配置失败";
-    return Response.json({ error: message }, { status: 500 });
+    return Response.json({ error: message }, { status: 500, headers: JSON_HEADERS });
   }
 }

@@ -6,7 +6,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     const CONFIG_FIELDS = BASE_CONFIG_FIELDS;
     const EXPORT_HEADERS = ['经营体链路','经营类型','业态','品牌','类目','系列','SPU','SKU','平台','店铺','仓库','来源','分销员(工号)','分销员(姓名)','客户名称','开票主体（公司名称）','是否直播（0未直播，1直播）','直播UID','BD工号','BD人名','服务商（BD公司名称）','供应商（公司名称）',COUNTRY_FIELD,'省份','地市','区县'];
     const MULTI_FIELDS = new Set(['业态','品牌','类目','系列','SPU','SKU','平台','店铺','来源','分销员','BD人名',COUNTRY_FIELD]);
-    const CUSTOM_ADD_FIELDS = new Set(['品牌','类目','系列','SPU','SKU','店铺']);
+    const CUSTOM_ADD_FIELDS = new Set(['品牌','类目','系列','SPU','SKU','平台','店铺']);
     const TEXT_FIELDS = DATA.headers.filter(item => !['BG','一级经营体','二级经营体','经营类型','业态','品牌','类目','系列','SPU','SKU','平台','店铺','来源','省份','地市','区县'].includes(item));
     const COUNTRY_REGION_TEXT = `东亚|中国、蒙古、朝鲜、韩国、日本、中国澳门、中国台湾、中国香港
 东南亚|菲律宾、越南、老挝、柬埔寨、缅甸、泰国、马来西亚、文莱、新加坡、印度尼西亚、圣诞岛、东帝汶
@@ -43,6 +43,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       values: Object.fromEntries(Object.entries(DATA.initialSaved || {}).map(([key, entry]) => [key, JSON.parse(JSON.stringify(entry.config))])),
       initialSaved: JSON.parse(JSON.stringify(DATA.initialSaved || {})),
       saved: {},
+      savedMeta: {},
       modalField: '',
       modalType: '',
       modalRowIndex: 0,
@@ -57,10 +58,35 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       (acc[r.parent] ||= []).push(r);
       return acc;
     }, {});
-    const platformNameMeta = (DATA.platformTree.flat || []).reduce((acc, item) => {
-      (acc[item.name] ||= []).push(item);
-      return acc;
-    }, {});
+    function isOfflineStorePlatform(name) {
+      return String(name || '').includes('线下店铺');
+    }
+
+    function platformFlat() {
+      return (DATA.platformTree.flat || []).filter(item => !isOfflineStorePlatform(item.name) && !isOfflineStorePlatform(item.group));
+    }
+
+    function platformOptions() {
+      return (DATA.options['平台'] || []).filter(name => !isOfflineStorePlatform(name));
+    }
+
+    function sanitizePlatformValue(value) {
+      return String(value || '').split('、').map(item => item.trim()).filter(Boolean).filter(item => !isOfflineStorePlatform(item)).join('、');
+    }
+
+    function sanitizeConfigPlatforms(config) {
+      if (!config || !config.groups) return config;
+      Object.values(config.groups).forEach(group => {
+        (group.rows || []).forEach(row => {
+          if (row && Object.prototype.hasOwnProperty.call(row, '平台')) {
+            row['平台'] = sanitizePlatformValue(row['平台']);
+          }
+        });
+      });
+      return config;
+    }
+
+    Object.values(state.values).forEach(config => sanitizeConfigPlatforms(config));
 
     function platformGroupKey(country, group) {
       return country + '::' + group;
@@ -215,6 +241,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       const values = ensureOrgValues();
       document.getElementById('currentPath').textContent = '当前经营体：' + path.join(' > ');
       renderPanel();
+      updateProgress();
       applyActive();
     }
 
@@ -477,7 +504,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     function syncPlatformParentsFromSelected() {
       state.platformCountries = new Set();
       state.platformGroupKeys = new Set();
-      const groupsByCountry = DATA.platformTree.groups || {};
+      const groupsByCountry = platformGroups();
       Object.entries(groupsByCountry).forEach(([country, groupMap]) => {
         let allGroupsSelected = true;
         Object.entries(groupMap).forEach(([group, names]) => {
@@ -527,6 +554,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       if (!CUSTOM_ADD_FIELDS.has(field)) return '';
       const name = String(value || '').trim();
       if (!name) return '';
+      if (field === '平台' && isOfflineStorePlatform(name)) return '';
       const normalized = normalizeStoreName(name);
       const exists = [...options, ...state.modalTemp].some(option => normalizeStoreName(option) === normalized);
       return exists ? '' : name;
@@ -536,6 +564,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       if (!CUSTOM_ADD_FIELDS.has(field)) return false;
       const value = String(name || '').trim();
       if (!value) return false;
+      if (field === '平台' && isOfflineStorePlatform(value)) return false;
       const exists = Array.from(state.modalTemp).some(item => normalizeStoreName(item) === normalizeStoreName(value));
       if (exists) return false;
       state.modalTemp.add(value);
@@ -546,15 +575,26 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     }
 
     function platformVisibleCountries() {
-      const countries = DATA.platformTree.countries || [];
+      const countries = platformCountries();
       return state.platformCountries.size ? countries.filter(country => state.platformCountries.has(country)) : countries;
+    }
+
+    function platformGroups() {
+      return platformFlat().reduce((acc, item) => {
+        (((acc[item.country] ||= {})[item.group] ||= [])).push(item.name);
+        return acc;
+      }, {});
+    }
+
+    function platformCountries() {
+      return Object.keys(platformGroups());
     }
 
     function platformGroupItems() {
       const keyword = document.getElementById('optionSearch').value.trim().toLowerCase();
       const result = [];
       platformVisibleCountries().forEach(country => {
-        Object.entries((DATA.platformTree.groups || {})[country] || {}).forEach(([group, names]) => {
+        Object.entries(platformGroups()[country] || {}).forEach(([group, names]) => {
           const groupMatched = !keyword || group.toLowerCase().includes(keyword);
           const nameMatched = names.some(name => name.toLowerCase().includes(keyword));
           if (groupMatched || nameMatched) result.push({ country, group, names });
@@ -569,7 +609,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       const hasGroupFilter = state.platformGroupKeys.size > 0;
       const names = [];
       const seen = new Set();
-      (DATA.platformTree.flat || []).forEach(item => {
+      platformFlat().forEach(item => {
         const key = platformGroupKey(item.country, item.group);
         if (!activeGroupKeys.has(key)) return;
         if (hasGroupFilter && !state.platformGroupKeys.has(key)) return;
@@ -582,11 +622,11 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     }
 
     function platformNamesByCountry(country) {
-      return (DATA.platformTree.flat || []).filter(item => item.country === country).map(item => item.name);
+      return platformFlat().filter(item => item.country === country).map(item => item.name);
     }
 
     function platformNamesByGroupKey(key) {
-      return (DATA.platformTree.flat || []).filter(item => platformGroupKey(item.country, item.group) === key).map(item => item.name);
+      return platformFlat().filter(item => platformGroupKey(item.country, item.group) === key).map(item => item.name);
     }
 
     function countryItems() {
@@ -679,7 +719,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     function renderSelectedPlatforms() {
       const selectedList = document.getElementById('selectedPlatformList');
       if (!selectedList) return;
-      const selected = DATA.options['平台'].filter(name => state.modalTemp.has(name));
+      const selected = Array.from(state.modalTemp);
       selectedList.innerHTML = selected.length ? selected.map(name => `<button class="tag selected" data-selected-platform="${escapeAttr(name)}">${escapeHtml(name)} ×</button>`).join('') : '<div class="cascade-empty">暂无已选平台</div>';
       selectedList.querySelectorAll('[data-selected-platform]').forEach(btn => {
         btn.onclick = () => {
@@ -694,32 +734,38 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       const countryList = document.getElementById('platformCountryList');
       const groupList = document.getElementById('platformGroupList');
       const nameList = document.getElementById('platformNameList');
+      const groupsByCountry = platformGroups();
       const groups = platformGroupItems();
       const visibleNames = platformVisibleNames();
-      countryList.innerHTML = (DATA.platformTree.countries || []).map(country => {
-        const count = Object.values((DATA.platformTree.groups || {})[country] || {}).reduce((sum, items) => sum + items.length, 0);
+      countryList.innerHTML = platformCountries().map(country => {
+        const count = Object.values(groupsByCountry[country] || {}).reduce((sum, items) => sum + items.length, 0);
         return `<button class="cascade-item ${state.platformCountries.has(country) ? 'selected' : ''}" data-country="${escapeAttr(country)}">${escapeHtml(country)}<span class="count">${count}</span></button>`;
       }).join('');
       groupList.innerHTML = groups.length ? groups.map(item => {
         const key = platformGroupKey(item.country, item.group);
         return `<button class="cascade-item ${state.platformGroupKeys.has(key) ? 'selected' : ''}" data-group-key="${escapeAttr(key)}">${escapeHtml(item.group)}<span class="count">${escapeHtml(item.country)} / ${item.names.length}</span></button>`;
       }).join('') : '<div class="cascade-empty">暂无百大平台</div>';
-      nameList.innerHTML = visibleNames.length ? visibleNames.map(name => `<button class="cascade-item ${state.modalTemp.has(name) ? 'selected' : ''}" data-name="${escapeAttr(name)}">${escapeHtml(name)}</button>`).join('') : '<div class="cascade-empty">暂无平台</div>';
+      const addPlatformValue = customValueToAdd('平台', document.getElementById('optionSearch').value, platformOptions());
+      const addPlatformButton = addPlatformValue ? `<button class="cascade-item add-custom" data-add-platform="${escapeAttr(addPlatformValue)}">添加平台：${escapeHtml(addPlatformValue)}</button>` : '';
+      nameList.innerHTML = addPlatformButton + (visibleNames.length ? visibleNames.map(name => `<button class="cascade-item ${state.modalTemp.has(name) ? 'selected' : ''}" data-name="${escapeAttr(name)}">${escapeHtml(name)}</button>`).join('') : '<div class="cascade-empty">暂无平台</div>');
       renderSelectedPlatforms();
       countryList.querySelectorAll('[data-country]').forEach(btn => {
         btn.onclick = () => {
           const country = btn.dataset.country;
           if (state.platformCountries.has(country)) {
             state.platformCountries.delete(country);
-            Object.keys((DATA.platformTree.groups || {})[country] || {}).forEach(group => state.platformGroupKeys.delete(platformGroupKey(country, group)));
+            Object.keys(groupsByCountry[country] || {}).forEach(group => state.platformGroupKeys.delete(platformGroupKey(country, group)));
             platformNamesByCountry(country).forEach(name => state.modalTemp.delete(name));
           } else {
             state.platformCountries.add(country);
-            Object.keys((DATA.platformTree.groups || {})[country] || {}).forEach(group => state.platformGroupKeys.add(platformGroupKey(country, group)));
+            Object.keys(groupsByCountry[country] || {}).forEach(group => state.platformGroupKeys.add(platformGroupKey(country, group)));
             platformNamesByCountry(country).forEach(name => state.modalTemp.add(name));
           }
           renderPlatformCascade();
         };
+      });
+      nameList.querySelectorAll('[data-add-platform]').forEach(btn => {
+        btn.onclick = () => addCustomValue('平台', btn.dataset.addPlatform);
       });
       groupList.querySelectorAll('[data-group-key]').forEach(btn => {
         btn.onclick = () => {
@@ -750,6 +796,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       if (field === COUNTRY_FIELD) return COUNTRY_OPTIONS;
       if (field === '分销员') return DATA.employeeOptions || [];
       if (field === 'BD人名') return DATA.bdOptions || [];
+      if (field === '平台') return platformOptions();
       return DATA.options[field] || [];
     }
 
@@ -778,8 +825,9 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
         if (!response.ok) throw new Error('共享配置加载失败');
         const data = await response.json();
         state.saved = data.saved || {};
+        state.savedMeta = data.meta || {};
         Object.entries(state.saved).forEach(([key, entry]) => {
-          if (entry && entry.config) state.values[key] = cloneConfig(entry.config);
+          if (entry && entry.config) state.values[key] = sanitizeConfigPlatforms(cloneConfig(entry.config));
         });
       } catch (error) {
         console.warn(error);
@@ -812,6 +860,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
         }
         const data = await response.json();
         state.saved = data.saved || { ...state.saved, [key]: entry };
+        state.savedMeta = data.meta || state.savedMeta;
         state.saved[key] = entry;
       } catch (error) {
         alert(error instanceof Error ? error.message : '确认配置失败');
@@ -821,12 +870,32 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
         button.textContent = '确认配置';
       }
       renderTree(document.getElementById('orgSearch').value);
-      updateSavedCount();
+      updateProgress();
     }
 
-    function updateSavedCount() {
+    function latestSavedAt() {
+      return Object.values(state.savedMeta).map(item => item && item.updatedAt).filter(Boolean).sort().pop() || '';
+    }
+
+    function formatDateTime(value) {
+      if (!value) return '暂无';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '暂无';
+      const pad = n => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    }
+
+    function updateProgress() {
       const count = Object.keys(state.saved).length;
-      document.getElementById('savedCount').textContent = `已确认${count}个经营体的产权配置`;
+      const savedCount = document.getElementById('savedCount');
+      const globalLast = document.getElementById('globalLastConfirmedAt');
+      const currentLast = document.getElementById('currentLastConfirmedAt');
+      if (savedCount) savedCount.textContent = `累计已确认${count}个经营体的产权配置`;
+      if (globalLast) globalLast.textContent = `最后一次确认时间：${formatDateTime(latestSavedAt())}`;
+      if (currentLast) {
+        const meta = state.selectedOrg ? state.savedMeta[orgKey()] : null;
+        currentLast.textContent = `当前经营体最后确认时间：${formatDateTime(meta && meta.updatedAt)}`;
+      }
     }
 
     function exportValue(value) {
@@ -977,7 +1046,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
 
     await loadSharedConfig();
     renderTree();
-    updateSavedCount();
+    updateProgress();
     const firstConfiguredKey = Object.keys(state.saved)[0] || Object.keys(state.initialSaved)[0];
     const first = firstConfiguredKey ? firstConfiguredKey.split('>') : (DATA.orgRows.find(row => row[0] && row[1]) || []).map(item => String(item || '').trim()).filter(Boolean);
     if (first.length) selectOrg(first);

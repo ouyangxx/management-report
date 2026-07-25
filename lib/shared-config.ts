@@ -94,6 +94,14 @@ export function entriesToSaved(rows: StoredEntryRow[]) {
   return saved;
 }
 
+export function entriesToMeta(rows: StoredEntryRow[]) {
+  const meta: Record<string, { updatedAt: string }> = {};
+  rows.forEach((row) => {
+    meta[row.org_key] = { updatedAt: row.updated_at };
+  });
+  return meta;
+}
+
 export async function replaceStoredEntry(orgKey: string, entry: SharedEntry, rows: string[][]) {
   await ensureSharedConfigTable();
   const now = new Date().toISOString();
