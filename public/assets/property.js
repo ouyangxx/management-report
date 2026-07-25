@@ -6,6 +6,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     const CONFIG_FIELDS = BASE_CONFIG_FIELDS;
     const EXPORT_HEADERS = ['经营体链路','经营类型','业态','品牌','类目','系列','SPU','SKU','平台','店铺','仓库','来源','分销员(工号)','分销员(姓名)','客户名称','开票主体（公司名称）','是否直播（0未直播，1直播）','直播UID','BD工号','BD人名','服务商（BD公司名称）','供应商（公司名称）',COUNTRY_FIELD,'省份','地市','区县'];
     const MULTI_FIELDS = new Set(['业态','品牌','类目','系列','SPU','SKU','平台','店铺','来源','分销员','BD人名',COUNTRY_FIELD]);
+    const CUSTOM_ADD_FIELDS = new Set(['品牌','类目','系列','SPU','SKU','店铺']);
     const TEXT_FIELDS = DATA.headers.filter(item => !['BG','一级经营体','二级经营体','经营类型','业态','品牌','类目','系列','SPU','SKU','平台','店铺','来源','省份','地市','区县'].includes(item));
     const COUNTRY_REGION_TEXT = `东亚|中国、蒙古、朝鲜、韩国、日本、中国澳门、中国台湾、中国香港
 东南亚|菲律宾、越南、老挝、柬埔寨、缅甸、泰国、马来西亚、文莱、新加坡、印度尼西亚、圣诞岛、东帝汶
@@ -428,14 +429,14 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       const selected = Array.from(state.modalTemp);
       const filtered = source.filter(v => !state.modalTemp.has(v) && (!keyword || v.toLowerCase().includes(keyword))).slice(0, Math.max(0, 500 - selected.length));
       const visibleOptions = [...selected, ...filtered];
-      const addStoreValue = field === '店铺' ? storeNameToAdd(document.getElementById('optionSearch').value, source) : '';
-      const addStoreButton = addStoreValue ? `<button class="tag add-store" data-add-store="${escapeAttr(addStoreValue)}">添加店铺：${escapeHtml(addStoreValue)}</button>` : '';
-      list.innerHTML = addStoreButton + visibleOptions.map(v => `<button class="tag ${state.modalTemp.has(v) ? 'selected' : ''}" data-value="${escapeAttr(v)}">${escapeHtml(v)}</button>`).join('');
-      list.querySelectorAll('[data-add-store]').forEach(tag => {
-        tag.onclick = () => addCustomStore(tag.dataset.addStore);
+      const addValue = customValueToAdd(field, document.getElementById('optionSearch').value, source);
+      const addButton = addValue ? `<button class="tag add-custom" data-add-custom="${escapeAttr(addValue)}">添加${escapeHtml(field)}：${escapeHtml(addValue)}</button>` : '';
+      list.innerHTML = addButton + visibleOptions.map(v => `<button class="tag ${state.modalTemp.has(v) ? 'selected' : ''}" data-value="${escapeAttr(v)}">${escapeHtml(v)}</button>`).join('');
+      list.querySelectorAll('[data-add-custom]').forEach(tag => {
+        tag.onclick = () => addCustomValue(field, tag.dataset.addCustom);
       });
       list.querySelectorAll('.tag').forEach(tag => {
-        if (tag.dataset.addStore) return;
+        if (tag.dataset.addCustom) return;
         tag.onclick = () => {
           const value = tag.dataset.value;
           if (state.modalTemp.has(value)) state.modalTemp.delete(value);
@@ -509,7 +510,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
               matched += 1;
             }
           });
-        } else if (addCustomStore(name, false)) {
+        } else if (addCustomValue('店铺', name, false)) {
           added += 1;
         }
       });
@@ -522,7 +523,8 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       return String(value).trim().toLowerCase();
     }
 
-    function storeNameToAdd(value, options) {
+    function customValueToAdd(field, value, options) {
+      if (!CUSTOM_ADD_FIELDS.has(field)) return '';
       const name = String(value || '').trim();
       if (!name) return '';
       const normalized = normalizeStoreName(name);
@@ -530,13 +532,14 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       return exists ? '' : name;
     }
 
-    function addCustomStore(name, shouldRender = true) {
+    function addCustomValue(field, name, shouldRender = true) {
+      if (!CUSTOM_ADD_FIELDS.has(field)) return false;
       const value = String(name || '').trim();
       if (!value) return false;
       const exists = Array.from(state.modalTemp).some(item => normalizeStoreName(item) === normalizeStoreName(value));
       if (exists) return false;
       state.modalTemp.add(value);
-      document.getElementById('smartTip').textContent = `已添加店铺：${value}`;
+      document.getElementById('smartTip').textContent = `已添加${field}：${value}`;
       document.getElementById('optionSearch').value = '';
       if (shouldRender) renderTags();
       return true;
