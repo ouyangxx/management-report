@@ -873,29 +873,10 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       updateProgress();
     }
 
-    function latestSavedAt() {
-      return Object.values(state.savedMeta).map(item => item && item.updatedAt).filter(Boolean).sort().pop() || '';
-    }
-
-    function formatDateTime(value) {
-      if (!value) return '暂无';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '暂无';
-      const pad = n => String(n).padStart(2, '0');
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-    }
-
     function updateProgress() {
       const count = Object.keys(state.saved).length;
       const savedCount = document.getElementById('savedCount');
-      const globalLast = document.getElementById('globalLastConfirmedAt');
-      const currentLast = document.getElementById('currentLastConfirmedAt');
       if (savedCount) savedCount.textContent = `累计已确认${count}个经营体的产权配置`;
-      if (globalLast) globalLast.textContent = `最后一次确认时间：${formatDateTime(latestSavedAt())}`;
-      if (currentLast) {
-        const meta = state.selectedOrg ? state.savedMeta[orgKey()] : null;
-        currentLast.textContent = `当前经营体最后确认时间：${formatDateTime(meta && meta.updatedAt)}`;
-      }
     }
 
     function exportValue(value) {
