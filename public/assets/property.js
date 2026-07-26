@@ -106,6 +106,14 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       return root;
     }
 
+    function firstLevelOrgPath() {
+      const firstRow = DATA.orgRows.find(row => {
+        const path = row.map(item => String(item || '').trim()).filter(Boolean);
+        return path.length >= 2;
+      });
+      return firstRow ? firstRow.map(item => String(item || '').trim()).filter(Boolean).slice(0, 2) : [];
+    }
+
     const treeData = buildTreeData();
 
     function node(label, level, path, hasChildren) {
@@ -1028,8 +1036,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     await loadSharedConfig();
     renderTree();
     updateProgress();
-    const firstConfiguredKey = Object.keys(state.saved)[0] || Object.keys(state.initialSaved)[0];
-    const first = firstConfiguredKey ? firstConfiguredKey.split('>') : (DATA.orgRows.find(row => row[0] && row[1]) || []).map(item => String(item || '').trim()).filter(Boolean);
+    const first = firstLevelOrgPath();
     if (first.length) selectOrg(first);
 })().catch(error => {
   console.error(error);
