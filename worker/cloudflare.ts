@@ -1,6 +1,6 @@
 import app from "../dist/server/ssr/index.js";
 
-const DEPLOY_MARKER = "2026-07-25-progress-meta";
+const DEPLOY_MARKER = "2026-07-26-sticky-progress";
 
 interface Env {
   ASSETS: Fetcher;
