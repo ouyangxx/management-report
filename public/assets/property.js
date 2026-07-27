@@ -913,10 +913,20 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     async function saveCurrentConfig() {
       if (!state.selectedOrg) return;
       const key = orgKey();
+      const values = ensureOrgValues();
+      if (!values.selectedTypes || !values.selectedTypes.length) {
+        alert('请至少选择一个经营类型后再确认配置');
+        return;
+      }
       const entry = {
         path: [...state.selectedOrg],
-        config: cloneConfig(ensureOrgValues())
+        config: cloneConfig(values)
       };
+      const exportRows = rowsForSavedEntry(entry);
+      if (!exportRows.length) {
+        alert('当前经营体没有可保存的产权配置，请补充配置后再确认');
+        return;
+      }
       const button = document.getElementById('saveBtn');
       button.disabled = true;
       button.textContent = '确认中...';
@@ -927,7 +937,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
           body: JSON.stringify({
             key,
             entry,
-            rows: rowsForSavedEntry(entry)
+            rows: exportRows
           })
         });
         if (!response.ok) {

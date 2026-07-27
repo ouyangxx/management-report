@@ -46,6 +46,12 @@ export async function POST(request: Request) {
     if (!isRows(payload.rows)) {
       return Response.json({ error: "导出行格式不正确" }, { status: 400 });
     }
+    if (!payload.rows.length) {
+      return Response.json(
+        { error: "当前经营体没有可保存的产权配置，已拒绝空配置覆盖" },
+        { status: 400, headers: JSON_HEADERS }
+      );
+    }
 
     await replaceStoredEntry(key, payload.entry, payload.rows);
     const rows = await listStoredEntries();
