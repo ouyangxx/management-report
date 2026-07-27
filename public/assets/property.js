@@ -1,4 +1,8 @@
 (async () => {
+function hidePageLoading() {
+  const loading = document.getElementById('pageLoading');
+  if (loading) loading.classList.add('hidden');
+}
 const DATA = await fetch('/assets/page-data.json').then(response => response.json());
     const COUNTRY_FIELD = '国家/地区';
     const COUNTRY_TYPES = new Set(['品牌零售','大客户分销','线上平台分销']);
@@ -1116,8 +1120,11 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     updateProgress();
     const first = firstLevelOrgPath();
     if (first.length) selectOrg(first);
+    hidePageLoading();
 })().catch(error => {
   console.error(error);
+  const loading = document.getElementById('pageLoading');
+  if (loading) loading.classList.add('hidden');
   const panel = document.getElementById('panel');
   if (panel) panel.innerHTML = '<div class="empty">页面加载失败，请刷新重试</div>';
 });

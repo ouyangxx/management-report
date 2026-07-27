@@ -6,6 +6,11 @@
       background: #f5f6f8;
       font-size: 14px;
     }
+    .page-loading { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(245, 246, 248, .92); color: #6b7280; }
+    .page-loading.hidden { display: none; }
+    .loading-card { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #fff; border: 1px solid #eceef1; box-shadow: 0 8px 24px rgba(15, 23, 42, .08); }
+    .loading-spin { width: 18px; height: 18px; border: 2px solid #fde3a7; border-top-color: #faad14; border-radius: 50%; animation: loading-rotate .8s linear infinite; }
+    @keyframes loading-rotate { to { transform: rotate(360deg); } }
     .app { height: 100vh; display: grid; grid-template-columns: 260px minmax(0, 1fr); }
     .sidebar { background: #fff; border-right: 1px solid #e8eaed; overflow: hidden; display: flex; flex-direction: column; }
     .search { padding: 12px; border-bottom: 1px solid #f0f1f3; }
