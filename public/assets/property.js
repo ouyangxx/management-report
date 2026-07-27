@@ -487,7 +487,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       const countryCascade = document.getElementById('countryCascade');
       const selectedBox = document.getElementById('platformSelectedBox');
       const tagList = document.getElementById('tagList');
-      box.classList.toggle('show', state.modalField === '店铺');
+      box.classList.toggle('show', isSmartField(state.modalField));
       cascade.classList.toggle('show', state.modalField === '平台');
       countryCascade.classList.toggle('show', state.modalField === COUNTRY_FIELD);
       selectedBox.classList.toggle('show', state.modalField === '平台' || state.modalField === COUNTRY_FIELD);
@@ -495,7 +495,24 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       document.querySelector('#modal .dialog').classList.toggle('platform-dialog', state.modalField === '平台');
       document.querySelector('#modal .dialog').classList.toggle('country-dialog', state.modalField === COUNTRY_FIELD);
       document.getElementById('selectedTitle').textContent = state.modalField === COUNTRY_FIELD ? '已选国家/地区' : '已选平台';
-      document.getElementById('smartTip').textContent = '按英文逗号分割，自动选中匹配到的店铺';
+      document.getElementById('smartInput').placeholder = smartPlaceholder(state.modalField);
+      document.getElementById('smartTip').textContent = smartTipText(state.modalField);
+    }
+
+    function isSmartField(field) {
+      return field === '店铺' || field === 'SPU' || field === 'SKU';
+    }
+
+    function smartPlaceholder(field) {
+      if (field === 'SPU') return '智能识别：可粘贴英文逗号分隔的SPU代码【SPU名称】';
+      if (field === 'SKU') return '智能识别：可粘贴英文逗号分隔的SKU代码【SKU名称】';
+      return '智能识别：可粘贴英文逗号分隔的店铺名称';
+    }
+
+    function smartTipText(field) {
+      if (field === 'SPU') return '按英文逗号分割，自动选中匹配到的SPU';
+      if (field === 'SKU') return '按英文逗号分割，自动选中匹配到的SKU';
+      return '按英文逗号分割，自动选中匹配到的店铺';
     }
 
     function initPlatformFilters() {
@@ -525,10 +542,61 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       });
     }
 
-    function smartRecognizeStores() {
-      if (state.modalField !== '店铺') return;
+    function smartRecognize() {
+      if (state.modalField === '店铺') {
+        smartRecognizeStores();
+        return;
+      }
+      if (state.modalField === 'SPU' || state.modalField === 'SKU') {
+        smartRecognizeProductCodes(state.modalField);
+      }
+    }
+
+    function splitSmartItems(raw) {
+      const result = [];
+      let current = '';
+      let bracketDepth = 0;
+      String(raw || '').split('').forEach(char => {
+        if (char === '【') bracketDepth += 1;
+        if (char === '】' && bracketDepth > 0) bracketDepth -= 1;
+        if ((char === ',' || char === '，' || char === '\n' || char === '\r' || char === '\t') && bracketDepth === 0) {
+          if (current.trim()) result.push(current.trim());
+          current = '';
+          return;
+        }
+        current += char;
+      });
+      if (current.trim()) result.push(current.trim());
+      return result;
+    }
+
+    function smartCodeFromItem(item) {
+      const match = String(item || '').trim().match(/^([^【\[]+)/);
+      return match ? match[1].trim() : '';
+    }
+
+    function smartRecognizeProductCodes(field) {
       const raw = document.getElementById('smartInput').value;
-      const names = raw.split(/[,，\n\r\t]+/).map(item => item.trim()).filter(Boolean);
+      const items = splitSmartItems(raw);
+      const codes = items.map(smartCodeFromItem).filter(Boolean);
+      const options = optionSource(field, state.modalType);
+      const byLower = new Map(options.map(option => [option.toLowerCase(), option]));
+      let matched = 0;
+      codes.forEach(code => {
+        const value = byLower.get(code.toLowerCase());
+        if (value && !state.modalTemp.has(value)) {
+          state.modalTemp.add(value);
+          matched += 1;
+        }
+      });
+      document.getElementById('smartTip').textContent = `识别到 ${codes.length} 个${field}，匹配选中 ${matched} 个`;
+      document.getElementById('optionSearch').value = '';
+      renderTags();
+    }
+
+    function smartRecognizeStores() {
+      const raw = document.getElementById('smartInput').value;
+      const names = splitSmartItems(raw);
       const options = optionSource('店铺', state.modalType);
       let matched = 0;
       let added = 0;
@@ -549,7 +617,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
           added += 1;
         }
       });
-      document.getElementById('smartTip').textContent = `识别到 ${names.length} 个，匹配选中 ${matched} 个，新增 ${added} 个`;
+      document.getElementById('smartTip').textContent = `识别到 ${names.length} 个店铺，匹配选中 ${matched} 个，新增 ${added} 个`;
       document.getElementById('optionSearch').value = '';
       renderTags();
     }
@@ -995,7 +1063,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     document.getElementById('cancelModal').onclick = closePicker;
     document.getElementById('confirmModal').onclick = confirmPicker;
     document.getElementById('optionSearch').oninput = renderTags;
-    document.getElementById('smartBtn').onclick = smartRecognizeStores;
+    document.getElementById('smartBtn').onclick = smartRecognize;
     document.getElementById('selectAll').onclick = () => {
       if (state.modalField === '平台') {
         platformVisibleNames().forEach(v => state.modalTemp.add(v));
