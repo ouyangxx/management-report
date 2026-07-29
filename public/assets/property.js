@@ -11,6 +11,12 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     const EXPORT_HEADERS = ['经营体链路','经营类型','业态','品牌','类目','系列','SPU','SKU','平台','店铺','仓库','来源','分销员(工号)','分销员(姓名)','客户名称','开票主体（公司名称）','是否直播（0未直播，1直播）','直播UID','BD工号','BD人名','服务商（BD公司名称）','供应商（公司名称）',COUNTRY_FIELD,'省份','地市','区县'];
     const MULTI_FIELDS = new Set(['业态','品牌','类目','系列','SPU','SKU','平台','店铺','来源','分销员','BD人名',COUNTRY_FIELD]);
     const CUSTOM_ADD_FIELDS = new Set(['品牌','类目','系列','SPU','SKU','平台','店铺']);
+    const LEVEL_CONFIG_FIELDS = {
+      1: ['品牌','业态'],
+      2: ['品牌','类目','业态'],
+      3: ['品牌','类目','平台','直播UID','业态'],
+      4: ['品牌','类目','系列','平台','直播UID','店铺','SPU','SKU','分销员','业态']
+    };
     const TEXT_FIELDS = DATA.headers.filter(item => !['BG','一级经营体','二级经营体','经营类型','业态','品牌','类目','系列','SPU','SKU','平台','店铺','来源','省份','地市','区县'].includes(item));
     const COUNTRY_REGION_TEXT = `东亚|中国、蒙古、朝鲜、韩国、日本、中国澳门、中国台湾、中国香港
 东南亚|菲律宾、越南、老挝、柬埔寨、缅甸、泰国、马来西亚、文莱、新加坡、印度尼西亚、圣诞岛、东帝汶
@@ -44,7 +50,9 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     const state = {
       selectedOrg: null,
       defaultType: DATA.options['经营类型'][0] || '',
-      values: Object.fromEntries(Object.entries(DATA.initialSaved || {}).map(([key, entry]) => [key, JSON.parse(JSON.stringify(entry.config))])),
+      values: Object.fromEntries(Object.entries(DATA.initialSaved || {}).map(([key, entry]) => [key, sanitizeConfigPlatforms(cloneConfig(propertyConfigFromEntry(entry)))])),
+      peopleValues: Object.fromEntries(Object.entries(DATA.initialPeople || {}).map(([key, people]) => [key, normalizePeople(people)])),
+      activeTab: 'property',
       initialSaved: JSON.parse(JSON.stringify(DATA.initialSaved || {})),
       saved: {},
       savedMeta: {},
@@ -264,8 +272,27 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
         panel.innerHTML = '<div class="empty">请选择左侧一级、二级、三级或四级经营体</div>';
         return;
       }
-      const values = ensureOrgValues();
       panel.innerHTML = `
+        <div class="tabs">
+          <button class="tab ${state.activeTab === 'property' ? 'active' : ''}" data-tab="property">产权配置</button>
+          <button class="tab ${state.activeTab === 'people' ? 'active' : ''}" data-tab="people">人员配置</button>
+        </div>
+        <div class="tab-content" id="tabContent"></div>
+      `;
+      panel.querySelectorAll('[data-tab]').forEach(tab => {
+        tab.onclick = () => {
+          state.activeTab = tab.dataset.tab;
+          renderPanel();
+        };
+      });
+      const content = document.getElementById('tabContent');
+      if (state.activeTab === 'people') renderPeoplePanel(content);
+      else renderPropertyPanel(content, scrollState);
+    }
+
+    function renderPropertyPanel(content, scrollState) {
+      const values = ensureOrgValues();
+      content.innerHTML = `
         <div class="type-row">
           <span class="label">经营类型</span>
           ${DATA.options['经营类型'].map(type => `
@@ -277,7 +304,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
         </div>
         <div class="config" id="groups"></div>
       `;
-      panel.querySelectorAll('input[name="businessType"]').forEach(input => {
+      content.querySelectorAll('input[name="businessType"]').forEach(input => {
         input.onchange = () => {
           if (input.checked) {
             if (!values.selectedTypes.includes(input.value)) values.selectedTypes.push(input.value);
@@ -297,6 +324,45 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
         groups.appendChild(createBusinessGroup(type, ensureGroup(values, type), values));
       });
       restoreGroupScroll(scrollState);
+    }
+
+    function renderPeoplePanel(content) {
+      const people = ensurePeopleValues();
+      content.innerHTML = `
+        <div class="people-toolbar">
+          <button class="primary" id="addPersonBtn">添加人员</button>
+        </div>
+        <div class="people-table-wrap">
+          <table class="people-table">
+            <thead><tr><th>工号</th><th>姓名</th><th>操作</th></tr></thead>
+            <tbody>
+              ${people.map((person, index) => `
+                <tr>
+                  <td><input class="person-code" data-index="${index}" value="${escapeAttr(person.code || '')}" placeholder="员工工号"></td>
+                  <td><input class="person-name" data-index="${index}" value="${escapeAttr(person.name || '')}" placeholder="员工姓名"></td>
+                  <td class="row-actions"><button type="button" data-delete-person="${index}">−</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      document.getElementById('addPersonBtn').onclick = () => {
+        people.push({ code: '', name: '' });
+        renderPanel();
+      };
+      content.querySelectorAll('.person-code').forEach(input => {
+        input.oninput = () => people[Number(input.dataset.index)].code = input.value;
+      });
+      content.querySelectorAll('.person-name').forEach(input => {
+        input.oninput = () => people[Number(input.dataset.index)].name = input.value;
+      });
+      content.querySelectorAll('[data-delete-person]').forEach(button => {
+        button.onclick = () => {
+          people.splice(Number(button.dataset.deletePerson), 1);
+          renderPanel();
+        };
+      });
     }
 
     function captureGroupScroll() {
@@ -322,9 +388,12 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       delete values.groups[type];
     }
 
+    function currentOrgLevel() {
+      return Math.max(1, Math.min(4, (state.selectedOrg || []).length - 1));
+    }
+
     function configFieldsForType(type) {
-      if (!COUNTRY_TYPES.has(type)) return BASE_CONFIG_FIELDS;
-      return BASE_CONFIG_FIELDS.flatMap(field => field === '业态' ? [COUNTRY_FIELD, field] : [field]);
+      return LEVEL_CONFIG_FIELDS[currentOrgLevel()] || LEVEL_CONFIG_FIELDS[4];
     }
 
     function createBusinessGroup(type, group, values) {
@@ -896,7 +965,34 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     }
 
     function cloneConfig(value) {
-      return JSON.parse(JSON.stringify(value));
+      return JSON.parse(JSON.stringify(value || {}));
+    }
+
+    function propertyConfigFromEntry(entry) {
+      const config = entry && entry.config ? entry.config : entry;
+      return config && config.property ? config.property : (config || { selectedTypes: [], groups: {} });
+    }
+
+    function peopleFromEntry(entry) {
+      const config = entry && entry.config ? entry.config : entry;
+      return config && Array.isArray(config.people) ? config.people : null;
+    }
+
+    function normalizePeople(people) {
+      return (Array.isArray(people) ? people : []).map(person => ({
+        code: String(person && person.code || '').trim(),
+        name: String(person && person.name || '').trim()
+      })).filter(person => person.code || person.name);
+    }
+
+    function cleanPeople(people) {
+      return normalizePeople(people);
+    }
+
+    function ensurePeopleValues() {
+      const key = orgKey();
+      if (!state.peopleValues[key]) state.peopleValues[key] = normalizePeople((DATA.initialPeople || {})[key] || []);
+      return state.peopleValues[key];
     }
 
     async function loadSharedConfig() {
@@ -907,7 +1003,10 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
         state.saved = data.saved || {};
         state.savedMeta = data.meta || {};
         Object.entries(state.saved).forEach(([key, entry]) => {
-          if (entry && entry.config) state.values[key] = sanitizeConfigPlatforms(cloneConfig(entry.config));
+          if (!entry || !entry.config) return;
+          state.values[key] = sanitizeConfigPlatforms(cloneConfig(propertyConfigFromEntry(entry)));
+          const savedPeople = peopleFromEntry(entry);
+          if (savedPeople) state.peopleValues[key] = normalizePeople(savedPeople);
         });
       } catch (error) {
         console.warn(error);
@@ -917,20 +1016,20 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     async function saveCurrentConfig() {
       if (!state.selectedOrg) return;
       const key = orgKey();
-      const values = ensureOrgValues();
-      if (!values.selectedTypes || !values.selectedTypes.length) {
-        alert('请至少选择一个经营类型后再确认配置');
+      const propertyConfig = cloneConfig(ensureOrgValues());
+      const people = cleanPeople(ensurePeopleValues());
+      const exportRows = rowsForSavedEntry({ path: [...state.selectedOrg], config: propertyConfig });
+      if (!exportRows.length && !people.length) {
+        alert('当前经营体没有可保存的产权或人员配置，请补充后再确认');
         return;
       }
       const entry = {
         path: [...state.selectedOrg],
-        config: cloneConfig(values)
+        config: {
+          property: propertyConfig,
+          people
+        }
       };
-      const exportRows = rowsForSavedEntry(entry);
-      if (!exportRows.length) {
-        alert('当前经营体没有可保存的产权配置，请补充配置后再确认');
-        return;
-      }
       const button = document.getElementById('saveBtn');
       button.disabled = true;
       button.textContent = '确认中...';
@@ -952,6 +1051,8 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
         state.saved = data.saved || { ...state.saved, [key]: entry };
         state.savedMeta = data.meta || state.savedMeta;
         state.saved[key] = entry;
+        state.values[key] = sanitizeConfigPlatforms(propertyConfig);
+        state.peopleValues[key] = people;
       } catch (error) {
         alert(error instanceof Error ? error.message : '确认配置失败');
         return;
@@ -984,7 +1085,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     function rowsForSavedEntry(entry) {
       const rows = [];
       const path = entry.path || [];
-      const values = entry.config;
+      const values = propertyConfigFromEntry(entry);
       const types = values && values.selectedTypes ? values.selectedTypes : [];
       types.forEach(type => {
         const group = values.groups && values.groups[type] ? values.groups[type] : { rows: [createEmptyRow(type)] };
@@ -1017,7 +1118,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     function downloadConfig() {
       const a = document.createElement('a');
       a.href = `/api/shared-config/download?t=${Date.now()}`;
-      a.download = '已配置经营体产权.xls';
+      a.download = '已确认经营体产权&人员配置20260729.xlsx';
       a.click();
     }
 

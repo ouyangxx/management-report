@@ -46,9 +46,13 @@ export async function POST(request: Request) {
     if (!isRows(payload.rows)) {
       return Response.json({ error: "导出行格式不正确" }, { status: 400 });
     }
-    if (!payload.rows.length) {
+    const people = payload.entry && payload.entry.config && typeof payload.entry.config === "object"
+      ? (payload.entry.config as { people?: unknown }).people
+      : [];
+    const hasPeople = Array.isArray(people) && people.length > 0;
+    if (!payload.rows.length && !hasPeople) {
       return Response.json(
-        { error: "当前经营体没有可保存的产权配置，已拒绝空配置覆盖" },
+        { error: "当前经营体没有可保存的产权或人员配置，已拒绝空配置覆盖" },
         { status: 400, headers: JSON_HEADERS }
       );
     }
