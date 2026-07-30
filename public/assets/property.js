@@ -1082,6 +1082,18 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       };
     }
 
+    function normalizeLiveFields(record) {
+      const liveField = '是否直播（0未直播，1直播）';
+      const uidField = '直播UID';
+      const invoiceField = '开票主体（公司名称）';
+      const live = String(record[liveField] || '').trim();
+      if (!live || live === '0' || live === '1') return;
+      if (!record[uidField]) record[uidField] = live;
+      const invoice = String(record[invoiceField] || '').trim();
+      record[liveField] = invoice === '0' || invoice === '1' ? invoice : '';
+      if (record[liveField] === invoice) record[invoiceField] = '';
+    }
+
     function rowsForSavedEntry(entry) {
       const rows = [];
       const path = entry.path || [];
@@ -1103,6 +1115,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
             record['BD工号'] = exportValue(configRow['BD工号']) || bd.codes;
             record['BD人名'] = bd.names;
           }
+          normalizeLiveFields(record);
           rows.push(EXPORT_HEADERS.map(h => record[h] || ''));
         });
       });

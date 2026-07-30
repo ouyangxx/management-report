@@ -204,12 +204,28 @@ function stylesXml() {
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Microsoft YaHei"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Microsoft YaHei"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF08A9E8"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="49" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs></styleSheet>`;
 }
 
+function normalizePropertyRow(row: string[]) {
+  const normalized = [...row];
+  while (normalized.length < EXPORT_HEADERS.length) normalized.push("");
+  const invoiceIndex = EXPORT_HEADERS.indexOf("开票主体（公司名称）");
+  const liveIndex = EXPORT_HEADERS.indexOf("是否直播（0未直播，1直播）");
+  const uidIndex = EXPORT_HEADERS.indexOf("直播UID");
+  const live = String(normalized[liveIndex] || "").trim();
+  if (live && live !== "0" && live !== "1") {
+    if (!normalized[uidIndex]) normalized[uidIndex] = live;
+    const invoice = String(normalized[invoiceIndex] || "").trim();
+    normalized[liveIndex] = invoice === "0" || invoice === "1" ? invoice : "";
+    if (normalized[liveIndex] === invoice) normalized[invoiceIndex] = "";
+  }
+  return normalized.slice(0, EXPORT_HEADERS.length);
+}
+
 export function buildSharedWorkbook(rowsByEntry: StoredEntryRow[]) {
   const propertyRows: string[][] = [EXPORT_HEADERS];
   const peopleRows: string[][] = [PEOPLE_HEADERS];
 
   rowsByEntry.forEach((entry) => {
-    parseRows(entry.rows_json).forEach((row) => propertyRows.push(row));
+    parseRows(entry.rows_json).forEach((row) => propertyRows.push(normalizePropertyRow(row)));
     const config = parseConfig(entry.config_json);
     const people = peopleFromConfig(config);
     if (people.length) {
