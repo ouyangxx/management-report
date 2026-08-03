@@ -5,6 +5,24 @@ function hidePageLoading() {
 }
 const DATA = await fetch('/assets/page-data.json').then(response => response.json());
     const COUNTRY_FIELD = '国家/地区';
+    const BUSINESS_TYPE_OPTIONS = ['品牌零售','直播零售','即时零售','国补','运营商','线上平台分销','大客户分销','市场分销','购机通分销','供应链分销','再生资源','代运营','采购','服务','到店'];
+    const BUSINESS_FORMAT_OPTIONS = {
+      '品牌零售': ['公共业态','直播','带货','线上零售','百补-苹果手机','百补-苹果融合','百补-安卓手机','百补-安卓融合','百补-其他','即时零售','跨境零售','出海零售'],
+      '直播零售': ['公共业态','直播','带货'],
+      '即时零售': ['即时零售'],
+      '国补': ['国补自营','国补服务商-引入','国补服务商-落地'],
+      '运营商': ['运营商-顺差合约机','运营商-非顺差合约机'],
+      '线上平台分销': ['公共业态','S2B2C','线上分销','线下分销','跨境分销','出海分销'],
+      '大客户分销': ['公共业态','线上分销','线下分销','跨境分销','出海分销'],
+      '市场分销': ['公共业态','线上分销','线下分销'],
+      '购机通分销': ['购机通分销'],
+      '供应链分销': ['公共业态','线上分销','线下分销'],
+      '再生资源': ['公共业态','直播','S2B2C','线上分销','线下分销','线上零售','百补-苹果手机','百补-苹果融合','百补-安卓手机','百补-安卓融合','百补-其他'],
+      '代运营': ['代运营'],
+      '采购': ['代发','集采'],
+      '服务': ['醒柜销售','购机通零售','国补O2O','保卖撮合','保卖撮合-垫资','供应链金融','代储代销','即时零售'],
+      '到店': ['到店']
+    };
     const COUNTRY_TYPES = new Set(['品牌零售','大客户分销','线上平台分销']);
     const BASE_CONFIG_FIELDS = ['品牌','类目','系列','SPU','SKU','平台','店铺','仓库','来源','分销员','客户名称','开票主体（公司名称）','是否直播（0未直播，1直播）','直播UID','BD工号','BD人名','服务商（BD公司名称）','供应商（公司名称）','省份','地市','区县','业态'];
     const CONFIG_FIELDS = BASE_CONFIG_FIELDS;
@@ -16,6 +34,23 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       2: ['品牌','类目','业态'],
       3: ['品牌','类目','平台','直播UID','业态'],
       4: ['品牌','类目','系列','平台','直播UID','店铺','SPU','SKU','分销员','业态']
+    };
+    const TYPE_CONFIG_FIELDS = {
+      '品牌零售': ['品牌','类目','系列','SPU','SKU','平台','店铺','国家/地区','省份','地市','区县','业态'],
+      '直播零售': ['品牌','类目','系列','SPU','SKU','平台','店铺','业态','直播UID'],
+      '即时零售': ['品牌','类目','系列','SPU','SKU','平台','店铺','省份','地市','区县','业态'],
+      '国补': ['品牌','类目','系列','SPU','SKU','平台','店铺','开票主体（公司名称）','业态','是否直播（0未直播，1直播）','直播UID'],
+      '运营商': ['品牌','类目','系列','SPU','SKU','平台','店铺','仓库','业态'],
+      '线上平台分销': ['品牌','类目','系列','SPU','SKU','平台','店铺','国家/地区','业态'],
+      '大客户分销': ['品牌','类目','系列','SPU','SKU','平台','店铺','分销员','国家/地区','业态','客户名称'],
+      '市场分销': ['品牌','类目','系列','SPU','SKU','平台','店铺','分销员','业态','客户名称'],
+      '购机通分销': ['品牌','类目','系列','SPU','SKU','来源','店铺','仓库','分销员','省份','地市','区县','业态'],
+      '供应链分销': ['品牌','类目','系列','SPU','SKU','平台','店铺','分销员','业态','客户名称'],
+      '再生资源': ['品牌','类目','系列','SPU','SKU','平台','店铺','仓库','业态'],
+      '代运营': ['品牌','类目','系列','SPU','SKU','平台','店铺','业态'],
+      '采购': ['品牌','类目','系列','SPU','SKU','来源','分销员','供应商（公司名称）','省份','地市','区县','业态'],
+      '服务': ['品牌','类目','系列','SPU','SKU','平台','来源','店铺','仓库','分销员','服务商（BD公司名称）','省份','地市','区县','开票主体（公司名称）','BD工号','BD人名','业态'],
+      '到店': ['品牌','类目','系列','SPU','SKU','平台','店铺','业态']
     };
     const TEXT_FIELDS = DATA.headers.filter(item => !['BG','一级经营体','二级经营体','经营类型','业态','品牌','类目','系列','SPU','SKU','平台','店铺','来源','省份','地市','区县'].includes(item));
     const COUNTRY_REGION_TEXT = `东亚|中国、蒙古、朝鲜、韩国、日本、中国澳门、中国台湾、中国香港
@@ -49,7 +84,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     const COUNTRY_OPTIONS = [...new Set(COUNTRY_REGION_TREE.flatMap(item => item.countries))];
     const state = {
       selectedOrg: null,
-      defaultType: DATA.options['经营类型'][0] || '',
+      defaultType: BUSINESS_TYPE_OPTIONS[0] || '',
       values: Object.fromEntries(Object.entries(DATA.initialSaved || {}).map(([key, entry]) => [key, sanitizeConfigPlatforms(cloneConfig(propertyConfigFromEntry(entry)))])),
       peopleValues: Object.fromEntries(Object.entries(DATA.initialPeople || {}).map(([key, people]) => [key, normalizePeople(people)])),
       activeTab: 'property',
@@ -295,7 +330,7 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       content.innerHTML = `
         <div class="type-row">
           <span class="label">经营类型</span>
-          ${DATA.options['经营类型'].map(type => `
+          ${businessTypeOptions(values).map(type => `
             <label class="type-option ${values.selectedTypes.includes(type) ? 'active' : ''}">
               <input type="checkbox" name="businessType" value="${escapeAttr(type)}" ${values.selectedTypes.includes(type) ? 'checked' : ''}>
               <span>${escapeHtml(type)}</span>
@@ -393,7 +428,16 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
     }
 
     function configFieldsForType(type) {
+      if (currentOrgLevel() === 4) return TYPE_CONFIG_FIELDS[type] || LEVEL_CONFIG_FIELDS[4];
       return LEVEL_CONFIG_FIELDS[currentOrgLevel()] || LEVEL_CONFIG_FIELDS[4];
+    }
+
+    function businessTypeOptions(values) {
+      const merged = [...BUSINESS_TYPE_OPTIONS];
+      (values.selectedTypes || []).forEach(type => {
+        if (!merged.includes(type)) merged.push(type);
+      });
+      return merged;
     }
 
     function createBusinessGroup(type, group, values) {
@@ -940,8 +984,21 @@ const DATA = await fetch('/assets/page-data.json').then(response => response.jso
       });
     }
 
+    function currentRowValue(field, type) {
+      if (state.modalType !== type || state.modalField !== field) return '';
+      const values = ensureOrgValues();
+      const group = ensureGroup(values, type);
+      const row = group.rows[state.modalRowIndex] || group.rows[0] || {};
+      return row[field] || '';
+    }
+
     function optionSource(field, type) {
-      if (field === '业态') return DATA.formatOptionsByType[type] || DATA.options[field] || [];
+      if (field === '业态') {
+        const currentValue = currentRowValue(field, type);
+        const options = BUSINESS_FORMAT_OPTIONS[type] || DATA.formatOptionsByType[type] || DATA.options[field] || [];
+        if (currentValue && !options.includes(currentValue)) return [currentValue, ...options];
+        return options;
+      }
       if (field === COUNTRY_FIELD) return COUNTRY_OPTIONS;
       if (field === '分销员') return DATA.employeeOptions || [];
       if (field === 'BD人名') return DATA.bdOptions || [];
