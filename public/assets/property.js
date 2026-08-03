@@ -3,7 +3,7 @@ function hidePageLoading() {
   const loading = document.getElementById('pageLoading');
   if (loading) loading.classList.add('hidden');
 }
-const DATA = await fetch('/assets/page-data.json').then(response => response.json());
+const DATA = await fetch('/assets/page-data.json?v=2026080301', { cache: 'no-store' }).then(response => response.json());
     const COUNTRY_FIELD = '国家/地区';
     const BUSINESS_TYPE_OPTIONS = ['品牌零售','直播零售','即时零售','国补','运营商','线上平台分销','大客户分销','市场分销','购机通分销','供应链分销','再生资源','代运营','采购','服务','到店'];
     const BUSINESS_FORMAT_OPTIONS = {
