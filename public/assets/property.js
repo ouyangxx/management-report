@@ -4,6 +4,15 @@ function hidePageLoading() {
   if (loading) loading.classList.add('hidden');
 }
 const DATA = await fetch('/assets/page-data.json?v=2026080301', { cache: 'no-store' }).then(response => response.json());
+    const REQUIRED_ORG_ROWS = [
+      ['能智BG','醒市科技'],
+      ['能智BG','醒市科技','即时零售']
+    ];
+    REQUIRED_ORG_ROWS.forEach(row => {
+      const key = row.join('>');
+      const exists = (DATA.orgRows || []).some(item => item.filter(Boolean).join('>') === key);
+      if (!exists) (DATA.orgRows ||= []).push(row);
+    });
     const COUNTRY_FIELD = '国家/地区';
     const BUSINESS_TYPE_OPTIONS = ['品牌零售','直播零售','即时零售','国补','运营商','线上平台分销','大客户分销','市场分销','购机通分销','供应链分销','再生资源','代运营','采购','服务','到店'];
     const BUSINESS_FORMAT_OPTIONS = {
