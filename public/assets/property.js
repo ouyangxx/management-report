@@ -3,7 +3,7 @@ function hidePageLoading() {
   const loading = document.getElementById('pageLoading');
   if (loading) loading.classList.add('hidden');
 }
-const DATA = await fetch('/assets/page-data.json?v=2026080304', { cache: 'no-store' }).then(response => response.json());
+const DATA = await fetch('/assets/page-data.json?v=2026080305', { cache: 'no-store' }).then(response => response.json());
     const REQUIRED_ORG_ROWS = [
       ['能智BG','醒市科技'],
       ['能智BG','醒市科技','即时零售']
