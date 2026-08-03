@@ -3,14 +3,17 @@ function hidePageLoading() {
   const loading = document.getElementById('pageLoading');
   if (loading) loading.classList.add('hidden');
 }
-const DATA = await fetch('/assets/page-data.json?v=2026080307', { cache: 'no-store' }).then(response => response.json());
+const DATA = await fetch('/assets/page-data.json?v=2026080308', { cache: 'no-store' }).then(response => response.json());
     const REQUIRED_ORG_ROWS = [
       ['能智BG','醒市科技'],
       ['能智BG','醒市科技','即时零售'],
       ['能智BG','醒市科技','即时零售','商家运营'],
       ['能智BG','醒市科技','即时零售','商家运营','京东秒送'],
       ['能智BG','醒市科技','即时零售','商家运营','淘宝闪购'],
-      ['能智BG','醒市科技','即时零售','商家运营','抖音小时达']
+      ['能智BG','醒市科技','即时零售','商家运营','抖音小时达'],
+      ['能智BG','醒市科技','即时零售','商家运营','美团闪购省区运营1'],
+      ['能智BG','醒市科技','即时零售','商家运营','美团闪购省区运营2'],
+      ['能智BG','醒市科技','即时零售','商家运营','美团闪购省区运营3']
     ];
     REQUIRED_ORG_ROWS.forEach(row => {
       const key = row.join('>');
