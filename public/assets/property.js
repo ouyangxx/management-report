@@ -433,6 +433,8 @@ const DATA = await fetch('/assets/page-data.json?v=2026080304', { cache: 'no-sto
     }
 
     function currentOrgLevel() {
+      const key = orgKey();
+      if (key === '能智BG>醒市科技>即时零售') return 4;
       return Math.max(1, Math.min(4, (state.selectedOrg || []).length - 1));
     }
 
